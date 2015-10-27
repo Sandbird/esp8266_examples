@@ -31,46 +31,49 @@ void setup() {
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
+    }
+      Serial.println("");
+      Serial.println("WiFi connected");
   }
-  Serial.println("");
-  Serial.println("WiFi connected");
-}
 
 void loop() {
   float humidity = dht.readHumidity();
   float tempIn = dht.readTemperature();
-  if (isnan(humidity) || isnan(tempIn)) {
-    Serial.println("Failed to read from DHT sensor!");
-    return;
-  }
+  sensors.requestTemperatures();
   float tempOut = sensors.getTempCByIndex(0);
 
-  if (tempOut == 85 && tempOut ==-127) {
-    tempOut = sensors.getTempCByIndex(0);
-    Serial.println(tempOut);
+  if (isnan(humidity) || isnan(tempIn)) {
+    Serial.println("Failed to read from DHT sensor!");
     delay(1000);
+    return;
   }
-  else {
-    if (client.connect(server,80)) {
-      String postStr = apiKey;
-             postStr +="&field1=";
-             postStr += String(tempIn);
-             postStr +="&field2=";
-             postStr += String(humidity);
-             postStr +="&field3=";
-             postStr += String(tempOut);
 
-       client.print("POST /update HTTP/1.1\n");
-       client.print("Host: api.thingspeak.com\n");
-       client.print("Connection: close\n");
-       client.print("X-THINGSPEAKAPIKEY: "+apiKey+"\n");
-       client.print("Content-Type: application/x-www-form-urlencoded\n");
-       client.print("Content-Length: ");
-       client.print(postStr.length());
-       client.print("\n\n");
-       client.print(postStr);
-       client.stop();
-       delay(600000);
+  if (tempOut == 85 || tempOut == -127) {
+    Serial.println("Failed to read from DS18B20 sensor!");
+    delay(1000);
+    return;
+  }
+
+  if (client.connect(server,80)) {
+    String postStr = apiKey;
+           postStr +="&field1=";
+           postStr += String(tempIn);
+           postStr +="&field2=";
+           postStr += String(humidity);
+           postStr +="&field3=";
+           postStr += String(tempOut);
+
+     client.print("POST /update HTTP/1.1\n");
+     client.print("Host: api.thingspeak.com\n");
+     client.print("Connection: close\n");
+     client.print("X-THINGSPEAKAPIKEY: "+apiKey+"\n");
+     client.print("Content-Type: application/x-www-form-urlencoded\n");
+     client.print("Content-Length: ");
+     client.print(postStr.length());
+     client.print("\n\n");
+     client.print(postStr);
+     client.stop();
+     Serial.println("Sent!");
+     delay(600000);
     }
-  }
-  }
+}
