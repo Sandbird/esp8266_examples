@@ -73,7 +73,7 @@ void loop() {
      client.print("\n\n");
      client.print(postStr);
      client.stop();
-     Serial.println("Sent!");
-     delay(600000);
+     Serial.println("Sent!\n--------\nDeep Sleep Mode!");
+     ESP.deepSleep(600000000);
     }
 }
