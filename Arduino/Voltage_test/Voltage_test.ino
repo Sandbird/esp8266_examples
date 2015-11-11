@@ -34,7 +34,6 @@ void loop() {
      client.print("\n\n");
      client.print(postStr);
      client.stop();
-
      ESP.deepSleep(600000000);
     }
 }
