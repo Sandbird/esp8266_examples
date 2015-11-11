@@ -37,8 +37,10 @@ void setup() {
 void loop() {
   float humidity = dht.readHumidity();
   float tempIn = dht.readTemperature();
+  sensors.setResolution(11);
   sensors.requestTemperatures();
   float tempOut = sensors.getTempCByIndex(0);
+  tempOut = round(tempOut*10)/10.0;
 
   if (isnan(humidity) || isnan(tempIn)) {
     Serial.println("Failed to read from DHT sensor!");
