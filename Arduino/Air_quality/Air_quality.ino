@@ -5,36 +5,38 @@
 #include <ESP8266WebServer.h>
 #include <ArduinoJson.h>
 
-const char* ssid = "SSID";
-const char* password = "PASSWORD";
-ADC_MODE(ADC_VCC);
-String decoded;
+const char* ssid = "ssid";
+const char* password = "password";
+
 const char* co;
 const char* pm10;
 const char* so2;
-const char* bzn; 
+const char* bzn;
 const char* o3;
 const char* no2;
 const char* indeks;
+
 char buf[1000];
+String decoded;
+
 const char* host = "toyorg.alwaysdata.net";
-ESP8266WebServer server(80);
 int port = 80;
 
-void setup(void)
-{
-  // You can open the Arduino IDE Serial Monitor window to see what the code is doing
-  Serial.begin(115200);  // Serial connection from ESP-01 via 3.3v console cable
+ESP8266WebServer server(80);
 
-  // Connect to WiFi network
+ADC_MODE(ADC_VCC);
+
+void setup(void) {
+  Serial.begin(115200);
+
   WiFi.begin(ssid, password);
-  Serial.print("\n\r \n\rWorking to connect");
+  Serial.print("\n\r \n\rConnecting");
 
-  // Wait for connection
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
   }
+
   Serial.println("");
   Serial.print("Connected to ");
   Serial.println(ssid);
@@ -42,13 +44,12 @@ void setup(void)
   Serial.println(WiFi.localIP());
 
   server.on("/", handleRoot);
-
   server.begin();
+
   Serial.println("HTTP server started");
 }
 
-void loop(void)
-{
+void loop(void) {
   server.handleClient();
 }
 
@@ -99,7 +100,9 @@ void show() {
     o3 = root["O3"];
     no2 = root["NO2"];
   }
+
     int pm10i = atoi(pm10);
+
     if (pm10i < 21) {
       indeks = "Bardzo dobra (5/5)";
     } else if (pm10i > 21 && pm10i < 81) {
@@ -127,8 +130,14 @@ void p(const char *fmt, ... ){
 }
 
 void handleRoot() {
+  int hr = (((millis() / 1000) / 60) / 60);
+  int min = ((millis() / 1000) / 60) % 60;
+  int sec = (millis() / 1000) % 60;
+
   show();
+
   int voltage = ESP.getVcc();
+
     p(
       "<html>\
       <head>\
@@ -157,6 +166,7 @@ void handleRoot() {
       </div>\
       </body>\
       </html>",
-                co, pm10, so2, bzn, o3, no2, indeks, voltage, (((millis() / 1000) / 60) / 60), ((millis() / 1000) / 60) % 60,(millis() / 1000) % 60);
+                co, pm10, so2, bzn, o3, no2, indeks, voltage, hr, min, sec);
+
   server.send (1000, "text/html", buf);
 }
