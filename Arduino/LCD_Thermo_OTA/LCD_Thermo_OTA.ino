@@ -24,7 +24,7 @@ int lux,pressure;
 float tempBmp,humidity,tempOut;
 uint8_t DegreeBitmap[]= { 0x6, 0x9, 0x9, 0x6, 0x0, 0, 0, 0 };
 unsigned long intervalsend = 600000;
-unsigned long previous = 0;
+unsigned long previousMillis = 0;
 
 const char* pm10;
 const char* indeks;
@@ -37,12 +37,11 @@ String apiKey = "APIKEY";
 const char* ssid = "SSID";
 const char* password = "PASSWORD";
 const char* server = "api.thingspeak.com";
-const char* version = "OTA-0.6";
+const char* version = "Therm-0.6.5";
 void getjson();
-void show();
+void showJson();
 
 void setup() {
-  Serial.begin(115200);
   Wire.begin(D5,D6);
   lcd.begin(16, 2);
   lcd.createChar (1, DegreeBitmap);
@@ -65,7 +64,7 @@ void setup() {
 
   MDNS.addService("http", "tcp", 80);
   ArduinoOTA.begin();
-  show();
+  showJson();
 }
 
 void backlight() {
@@ -158,6 +157,7 @@ void fourth() {
 }
 
 void send() {
+  lcd.clear();
   lcd.home();
   lcd.print("Sending!");
   if (client.connect(server,80)) {
@@ -190,7 +190,9 @@ void send() {
 
 void getjson() {
   if (!client.connect(host, port)) {
-    //Serial.println("connection failed");
+    lcd.clear();
+    lcd.home();
+    lcd.println("Connection failed");
     return;
   }
 
@@ -209,20 +211,23 @@ void getjson() {
   }
   String line = client.readStringUntil('\n');
   if (line.startsWith("{\"CO\"")) {
-  //  Serial.println("Ok");
   } else {
-    //Serial.println("Failed");
+    lcd.clear();
+    lcd.home();
+    lcd.println("Json get failed");
   }
   decoded = line;
 }
 
-void show() {
+void showJson() {
   getjson();
   StaticJsonBuffer<400> jsonBuffer;
   JsonObject& root = jsonBuffer.parseObject(decoded);
 
   if (!root.success()) {
-    //Serial.println("parseObject() failed");
+    lcd.clear();
+    lcd.home();
+    lcd.println("Json failed");
   } else {
     pm10 = root["PM10"];
   }
@@ -245,7 +250,7 @@ void show() {
 }
 
 void loop() {
- unsigned long current = millis();
+ unsigned long currentMillis = millis();
  
  ArduinoOTA.handle();
 
@@ -256,9 +261,9 @@ void loop() {
  third();
  fourth();
 
- if ((unsigned long)(current - previous) >= intervalsend) {
+ if ((unsigned long)(currentMillis - previousMillis) >= intervalsend) {
    send();
-   show();
-   previous = current;
+   showJson();
+   previousMillis = currentMillis;
  }
 }
