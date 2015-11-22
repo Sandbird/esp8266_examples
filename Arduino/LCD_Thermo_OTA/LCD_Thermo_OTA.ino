@@ -10,6 +10,7 @@
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
 #include <ESP8266mDNS.h>
+#include <ArduinoJson.h>
 
 BH1750 lightMeter;
 Adafruit_BMP085 bmp;
@@ -25,11 +26,20 @@ uint8_t DegreeBitmap[]= { 0x6, 0x9, 0x9, 0x6, 0x0, 0, 0, 0 };
 unsigned long intervalsend = 600000;
 unsigned long previous = 0;
 
-String apiKey = "API";
+const char* pm10;
+const char* indeks;
+char buf[1000];
+String decoded;
+const char* host = "toyorg.alwaysdata.net";
+int port = 80;
+
+String apiKey = "APIKEY";
 const char* ssid = "SSID";
 const char* password = "PASSWORD";
 const char* server = "api.thingspeak.com";
-const char* version = "OTA-0.5.5";
+const char* version = "OTA-0.6";
+void getjson();
+void show();
 
 void setup() {
   Serial.begin(115200);
@@ -55,6 +65,7 @@ void setup() {
 
   MDNS.addService("http", "tcp", 80);
   ArduinoOTA.begin();
+  show();
 }
 
 void backlight() {
@@ -126,6 +137,9 @@ void third() {
   lcd.print("L: ");
   lcd.print(lux);
   lcd.print(" Lx");
+  lcd.setCursor(0, 1);
+  lcd.print("Air: ");
+  lcd.print(indeks);
   backlight();
   delay(2000);
   yield();
@@ -174,21 +188,77 @@ void send() {
     }
  }
 
- void loop() {
-  unsigned long current = millis();
-  
-  ArduinoOTA.handle();
- 
-  readings();
-
-  first();
-  second();
-  third();
-  fourth();
-
-  if ((unsigned long)(current - previous) >= intervalsend) {
-    send();
-    previous = current;
+void getjson() {
+  if (!client.connect(host, port)) {
+    //Serial.println("connection failed");
+    return;
   }
+
+  String url = "/values.json";
+
+  client.print(String("GET ") + url + " HTTP/1.1\r\n" +
+               "Host: " + host + "\r\n" +
+               "User-Agent: BuildFailureDetectorESP8266\r\n" +
+               "Connection: close\r\n\r\n");
+
+  while (client.connected()) {
+    String line = client.readStringUntil('\n');
+    if (line == "\r") {
+      break;
+    }
+  }
+  String line = client.readStringUntil('\n');
+  if (line.startsWith("{\"CO\"")) {
+  //  Serial.println("Ok");
+  } else {
+    //Serial.println("Failed");
+  }
+  decoded = line;
 }
 
+void show() {
+  getjson();
+  StaticJsonBuffer<400> jsonBuffer;
+  JsonObject& root = jsonBuffer.parseObject(decoded);
+
+  if (!root.success()) {
+    //Serial.println("parseObject() failed");
+  } else {
+    pm10 = root["PM10"];
+  }
+
+    int pm10i = atoi(pm10);
+
+    if (pm10i < 50) {
+      indeks = "Good";
+    } else if (pm10i > 50 && pm10i < 100) {
+      indeks = "Moderate";
+    } else if (pm10i > 100 && pm10i < 150) {
+      indeks = "Unhealthy SG";
+    } else if (pm10i > 150 && pm10i < 200) {
+      indeks = "Unhealthy";
+    } else if (pm10i > 200 && pm10i < 300) {
+      indeks = "V Unhealthy";
+    } else if (pm10i > 300) {
+      indeks = "Hazardous";
+    }
+}
+
+void loop() {
+ unsigned long current = millis();
+ 
+ ArduinoOTA.handle();
+
+ readings();
+
+ first();
+ second();
+ third();
+ fourth();
+
+ if ((unsigned long)(current - previous) >= intervalsend) {
+   send();
+   show();
+   previous = current;
+ }
+}
