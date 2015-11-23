@@ -3,53 +3,53 @@
 #include <BH1750.h>
 #include <LiquidCrystal_I2C.h>
 #include <DHT.h>
-#include <OneWire.h>
-#include <DallasTemperature.h>
+//#include <OneWire.h> // 2 lines down - DS18B20 not in use NOW
+//#include <DallasTemperature.h>
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
 #include <ESP8266mDNS.h>
 #include <ArduinoJson.h>
+#include "Logins.h" // contain ThingSpeak ApiKey, WiFi SSID and password
 
-BH1750 lightMeter;
+BH1750 lightMeter;  // 5 lines down - sensors beginning
 Adafruit_BMP085 bmp;
 DHT dht(D2, DHT22);
-OneWire oneWire(D3);
-DallasTemperature sensors(&oneWire);
-LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);
-WiFiClient client;
+//OneWire oneWire(D3);
+//DallasTemperature sensors(&oneWire);
+LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE); // LCD beginning
+WiFiClient client; // ESP8266 WiFi mode set to client
 
-int lux,pressure;
-float tempBmp,humidity,tempOut;
-uint8_t DegreeBitmap[]= { 0x6, 0x9, 0x9, 0x6, 0x0, 0, 0, 0 };
-unsigned long intervalsend = 600000;
+int lux,pressure,pm10i; // 2 lines down - variables for sensors values
+float tempBmp,humDHT,tempDHT;
+uint8_t DegreeBitmap[]= { 0x6, 0x9, 0x9, 0x6, 0x0, 0, 0, 0 }; // LCD degree char declaraion
+const unsigned long intervalsend = 600000 - 10000; // 2 lines down - Timer time initialization
 unsigned long previousMillis = 0;
 
-const char* pm10;
+const char* pm10; // 5 lines down - variables to decode JSON
 const char* indeks;
 char buf[1000];
 String decoded;
 const char* host = "toyorg.alwaysdata.net";
 int port = 80;
 
-String apiKey = "APIKEY";
-const char* ssid = "SSID";
-const char* password = "PASSWORD";
 const char* server = "api.thingspeak.com";
-const char* version = "Therm-0.6.5";
-void getjson();
-void showJson();
+const char* version = "Meteo-0.8";
+
+void getjson(); // 2 lines down - need to this early function declaration to get code working
+void decodeJson();
 
 void setup() {
-  Wire.begin(D5,D6);
+  Wire.begin(D5,D6); // 7 lines down - sensors initialization and LCD, installing degree char to LCD
   lcd.begin(16, 2);
-  lcd.createChar (1, DegreeBitmap);
+  lcd.createChar(1, DegreeBitmap);
   lcd.home();
   dht.begin();
   lightMeter.begin();
   bmp.begin();
-  WiFi.begin(ssid, password);
+
+  WiFi.begin(ssid, password); // starting connectiong to WiFi
 
   lcd.print("Connecting ");
   lcd.print(ssid);
@@ -62,12 +62,12 @@ void setup() {
     lcd.print("Connected!");
     delay(500);
 
-  MDNS.addService("http", "tcp", 80);
+  MDNS.addService("http", "tcp", 80); // 2 lines down - staring MDNS and OTA service
   ArduinoOTA.begin();
-  showJson();
+  decodeJson(); // executing this function so won't get empty value
 }
 
-void backlight() {
+void backlight() { // function checking light amount and setting backlight on or off
   lux = lightMeter.readLightLevel();
   if (lux < 5) {
     lcd.noBacklight();
@@ -76,75 +76,86 @@ void backlight() {
   }
 }
 
-void readings() {
+void readings() { // getting values from sensors
   lcd.home();
   tempBmp = bmp.readTemperature();
   pressure = bmp.readPressure()/100;
-  humidity = dht.readHumidity();
-  sensors.setResolution(12);
-  sensors.requestTemperatures();
-  tempOut = sensors.getTempCByIndex(0);
-  tempOut = round(tempOut*10)/10.0;
+  tempDHT = dht.readTemperature();
+  humDHT = dht.readHumidity();
+  //sensors.setResolution(12);
+  //sensors.requestTemperatures();
+  //tempDS = sensors.getTempCByIndex(0);
+  //tempDS = round(tempDS*10)/10.0;
 
-  if (isnan(humidity)) {
-    lcd.println("DHT failed!");
+  if (isnan(humDHT)) { // checking is DHT values are OK
+    lcd.clear();
+    lcd.home();
+    lcd.print("DHT failed!");
     delay(1000);
     return;
   }
 
-  if (tempOut == 85 || tempOut == -127) {
-    lcd.println("DS18B20 failed!");
-    delay(1000);
-    return;
-  }
-  yield();
+//  if (tempDS == 85 || tempDS == -127) { // checking is DS18B20 values are OK
+//    lcd.clear();
+//    lcd.home();
+//    lcd.print("DS18B20 failed!");
+//    delay(1000);
+//    return;
+//  }
+
 }
 
-void first() {
-  lcd.clear();
-  lcd.home();
+float dewPoint(float celsius, float humidity) { // calculating dew point
+  float a = 17.271;
+  float b = 237.7;
+  float temp = (a * celsius) / (b + celsius) + log(humidity*0.01);
+  float Td = (b * temp) / (a - temp);
+  return Td;
+}
+
+void Inside(int del) { // showing first "screen" on LCD, arg is time of delay() in ms
+  lcd.clear(); // clearing LCD
+  lcd.home(); // set upper-left position
   lcd.print("In: ");
   lcd.print(tempBmp, 1);
-  lcd.print("\001C");
-  lcd.setCursor(0, 1);
-  lcd.print("Out: ");
-  lcd.print(tempOut, 1);
-  lcd.print("\001C");
-  backlight();
-  delay(2000);
-  yield();
-}
-
-void second() {
-  lcd.clear();
-  lcd.home();
-  lcd.print("Hum: ");
-  lcd.print(humidity, 1);
-  lcd.print(" %");
-  lcd.setCursor(0, 1);
-  lcd.print("Pre: ");
-  lcd.print(pressure);
-  lcd.print(" hPa");
-  backlight();
-  delay(2000);
-  yield();
-}
-
-void third() {
-  lcd.clear();
-  lcd.home();
+  lcd.print("\001C"); // use of degree char
+  lcd.setCursor(0, 1); // set new line
   lcd.print("L: ");
   lcd.print(lux);
   lcd.print(" Lx");
-  lcd.setCursor(0, 1);
-  lcd.print("Air: ");
-  lcd.print(indeks);
   backlight();
-  delay(2000);
-  yield();
+  delay(del);
 }
 
-void fourth() {
+void Outside(int del) {
+  lcd.clear();
+  lcd.home();
+  lcd.print("Out: ");
+  lcd.print(tempDHT, 1);
+  lcd.print("\001C");
+  lcd.setCursor(0, 1);
+  lcd.print("Hum: ");
+  lcd.print(humDHT, 1);
+  lcd.print(" %");
+  backlight();
+  delay(del);
+}
+void AirPre(int del) {
+  lcd.clear();
+  lcd.home();
+  lcd.print("P: ");
+  lcd.print(pressure);
+  lcd.print(" hPa");
+  lcd.setCursor(0, 1);
+  lcd.print("A: ");
+  lcd.print(indeks);
+  lcd.print(" ");
+  lcd.print(pm10i);
+  backlight();
+  delay(del);
+}
+
+void Debug(int del) {
   lcd.clear();
   lcd.home();
   lcd.print("Ver: ");
@@ -152,11 +163,20 @@ void fourth() {
   lcd.setCursor(0, 1);
   lcd.print(WiFi.localIP());
   backlight();
-  delay(1000);
-  yield();
+  delay(del);
 }
 
-void send() {
+void Dew(int del) {
+  lcd.clear();
+  lcd.home();
+  lcd.print("DewP: ");
+  lcd.print(dewPoint(tempDHT, humDHT),1);
+  lcd.print("\001C");
+  backlight();
+  delay(del);
+}
+
+void send() { // sending data to ThingSpeak
   lcd.clear();
   lcd.home();
   lcd.print("Sending!");
@@ -165,13 +185,15 @@ void send() {
              postStr +="&field1=";
              postStr += String(tempBmp);
              postStr +="&field2=";
-             postStr += String(humidity);
+             postStr += String(humDHT);
              postStr +="&field3=";
-             postStr += String(tempOut);
+             postStr += String(tempDHT);
              postStr +="&field4=";
              postStr += String(lux);
              postStr +="&field5=";
              postStr += String(pressure);
+             postStr +="&field6=";
+             postStr += String(pm10i);
 
        client.print("POST /update HTTP/1.1\n");
        client.print("Host: api.thingspeak.com\n");
@@ -188,11 +210,11 @@ void send() {
     }
  }
 
-void getjson() {
+void getjson() { // getting JSON form host, port
   if (!client.connect(host, port)) {
     lcd.clear();
     lcd.home();
-    lcd.println("Connection failed");
+    lcd.print("Connection failed");
     return;
   }
 
@@ -214,12 +236,12 @@ void getjson() {
   } else {
     lcd.clear();
     lcd.home();
-    lcd.println("Json get failed");
+    lcd.print("Json failed");
   }
   decoded = line;
 }
 
-void showJson() {
+void decodeJson() { // decoding JSON
   getjson();
   StaticJsonBuffer<400> jsonBuffer;
   JsonObject& root = jsonBuffer.parseObject(decoded);
@@ -227,14 +249,14 @@ void showJson() {
   if (!root.success()) {
     lcd.clear();
     lcd.home();
-    lcd.println("Json failed");
+    lcd.print("Parse failed");
   } else {
     pm10 = root["PM10"];
   }
 
-    int pm10i = atoi(pm10);
+    pm10i = atoi(pm10); // ASCII to int
 
-    if (pm10i < 50) {
+    if (pm10i < 50) { // setting AQI based on pm10i value
       indeks = "Good";
     } else if (pm10i > 50 && pm10i < 100) {
       indeks = "Moderate";
@@ -250,20 +272,21 @@ void showJson() {
 }
 
 void loop() {
- unsigned long currentMillis = millis();
- 
- ArduinoOTA.handle();
+ unsigned long currentMillis = millis(); // setting current time from boot
 
- readings();
+ ArduinoOTA.handle(); // starting OTA handler
 
- first();
- second();
- third();
- fourth();
+ readings(); // 7 lines down - executing function showing data on LCD
 
- if ((unsigned long)(currentMillis - previousMillis) >= intervalsend) {
+ Inside(2000);
+ Outside(2000);
+ AirPre(2000);
+ Dew(2000);
+ Debug(1000);
+
+ if ((unsigned long)(currentMillis - previousMillis) >= intervalsend) { // checking statement conditions
+   previousMillis = currentMillis; // save last time executing this
+   decodeJson();
    send();
-   showJson();
-   previousMillis = currentMillis;
  }
 }
