@@ -4,9 +4,7 @@
 #include <WiFiClient.h>
 #include <ESP8266WebServer.h>
 #include <ArduinoJson.h>
-
-const char* ssid = "ssid";
-const char* password = "password";
+#include "Logins.h"
 
 const char* co;
 const char* pm10;

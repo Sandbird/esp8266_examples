@@ -1,8 +1,6 @@
 #include <ESP8266WiFi.h>
+#include "Logins.h"
 
-String apiKey = "Thingspeak APIkey";
-const char* ssid = "SSID";
-const char* password = "PASSWORD";
 const char* server = "api.thingspeak.com";
 
 WiFiClient client;
