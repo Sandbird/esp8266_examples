@@ -24,7 +24,7 @@ WiFiClient client; // ESP8266 WiFi mode set to client
 int lux,pressure,pm10i; // 2 lines down - variables for sensors values
 float tempBmp,humDHT,tempDHT;
 uint8_t DegreeBitmap[]= { 0x6, 0x9, 0x9, 0x6, 0x0, 0, 0, 0 }; // LCD degree char declaraion
-const unsigned long intervalsend = 600000 - 1000; // 2 lines down - Timer time initialization
+const unsigned long intervalsend = 600000; // 2 lines down - Timer time initialization
 unsigned long previousMillis = 0;
 
 const char* pm10; // 5 lines down - variables to decode JSON

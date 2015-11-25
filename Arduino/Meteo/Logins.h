@@ -1,3 +1,3 @@
-String apiKey = "ThingSpeak ApiKey";
-const char* ssid = "SSID";
-const char* password = "PASSWORD";
+String apiKey = "F4KCQEXAJ8WOWK3C";
+const char* ssid = "wtf";
+const char* password = "jasemnetoperek";
