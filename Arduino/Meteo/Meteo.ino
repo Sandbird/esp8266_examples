@@ -24,7 +24,7 @@ WiFiClient client; // ESP8266 WiFi mode set to client
 int lux,pressure,pm10i; // 2 lines down - variables for sensors values
 float tempBmp,humDHT,tempDHT;
 uint8_t DegreeBitmap[]= { 0x6, 0x9, 0x9, 0x6, 0x0, 0, 0, 0 }; // LCD degree char declaraion
-const unsigned long intervalsend = 600000 - 10000; // 2 lines down - Timer time initialization
+const unsigned long intervalsend = 600000 - 1000; // 2 lines down - Timer time initialization
 unsigned long previousMillis = 0;
 
 const char* pm10; // 5 lines down - variables to decode JSON
@@ -35,7 +35,7 @@ const char* host = "toyorg.alwaysdata.net";
 int port = 80;
 
 const char* server = "api.thingspeak.com";
-const char* version = "Meteo-0.8";
+const char* version = "Meteo 0.8.1";
 
 void getjson(); // 2 lines down - need to this early function declaration to get code working
 void decodeJson();
@@ -106,10 +106,10 @@ void readings() { // getting values from sensors
 }
 
 float dewPoint(float celsius, float humidity) { // calculating dew point
-  float a = 17.271;
-  float b = 237.7;
-  float temp = (a * celsius) / (b + celsius) + log(humidity*0.01);
-  float Td = (b * temp) / (a - temp);
+  double a = 17.271;
+  double b = 237.7;
+  double temp = (a * celsius) / (b + celsius) + log(humidity*0.01);
+  double Td = (b * temp) / (a - temp);
   return Td;
 }
 
