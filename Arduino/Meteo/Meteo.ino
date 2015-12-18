@@ -35,7 +35,7 @@ const char* host = "toyorg.alwaysdata.net";
 int port = 80;
 
 const char* server = "api.thingspeak.com";
-const char* version = "Meteo 0.8.2";
+const char* version = "Meteo 0.8.3";
 
 void getjson(); // 2 lines down - need to this early function declaration to get code working
 void decodeJson();
@@ -135,8 +135,8 @@ void Outside(int del) {
   lcd.print("\001C");
   lcd.setCursor(0, 1);
   lcd.print("Hum: ");
-  lcd.print(humDHT, 1);
-  lcd.print(" %");
+  lcd.print(humDHT + 0.1, 1);
+  lcd.print("%");
   backlight();
   delay(del);
 }
