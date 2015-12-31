@@ -35,7 +35,7 @@ const char* host = "toyorg.alwaysdata.net";
 int port = 80;
 
 const char* server = "api.thingspeak.com";
-const char* version = "Meteo 0.8.3";
+const char* version = "Meteo 0.8.4";
 
 void getjson(); // 2 lines down - need to this early function declaration to get code working
 void decodeJson();
@@ -81,7 +81,7 @@ void readings() { // getting values from sensors
   tempBmp = bmp.readTemperature();
   pressure = bmp.readPressure()/100;
   tempDHT = dht.readTemperature();
-  humDHT = dht.readHumidity();
+  humDHT = dht.readHumidity() + 0.1;
   //sensors.setResolution(12);
   //sensors.requestTemperatures();
   //tempDS = sensors.getTempCByIndex(0);
@@ -135,7 +135,7 @@ void Outside(int del) {
   lcd.print("\001C");
   lcd.setCursor(0, 1);
   lcd.print("Hum: ");
-  lcd.print(humDHT + 0.1, 1);
+  lcd.print(humDHT, 1);
   lcd.print("%");
   backlight();
   delay(del);
@@ -284,8 +284,8 @@ void loop() {
 
  Inside(2000);
  Outside(2000);
- AirPre(2000);
  DewandHeat(2000);
+ AirPre(2000);
  Debug(1000);
 
  if ((unsigned long)(currentMillis - previousMillis) >= intervalsend) { // checking statement conditions
